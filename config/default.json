@@ -1,0 +1,7 @@
+{
+    "mongo": {
+        "login": "",
+        "password": "",
+        "db": ""
+    }
+}

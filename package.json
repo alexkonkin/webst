@@ -1,0 +1,27 @@
+{
+  "name": "webst",
+  "version": "1.0.0",
+  "description": "demo project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "dev": "dotenv -e .env -- node index.js"
+  },
+  "author": "alexkonkin@gmail.com",
+  "license": "ISC",
+  "dependencies": {
+    "config": "^3.3.12",
+    "express": "^4.19.2",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "lodash": "^4.17.21",
+    "mongoose": "^8.5.1",
+    "nodaemon": "^0.0.5",
+    "nodemon": "^3.1.4",
+    "winston": "^3.13.1"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^7.4.2"
+  }
+}

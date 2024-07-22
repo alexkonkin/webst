@@ -1,0 +1,7 @@
+{
+    "mongo": {
+        "login": "webst_mongo_login",
+        "password": "webst_mongo_password",
+        "db": "webst_mongo_db"
+    }
+}
