@@ -1,6 +1,7 @@
 const { Category, validate } = require('../models/category');
 const mongoose = require('mongoose');
 const express = require('express');
+const { Product } = require('../models/product');
 const router = express.Router();
 
 // GET route to retrieve all categories, sorted by name
@@ -73,20 +74,38 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// router.delete('/:id', async (req, res) => {
-//     const movie = await Movie.findByIdAndRemove(req.params.id);
+router.delete('/:id', async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-//     if (!movie) return res.status(404).send('The movie with the given ID was not found.');
+    try {
+        // Check if any product is associated with the category
+        console.log(req.params)
+        const productCount = await Product.countDocuments({ category_id: req.params.id }).session(session);
+        console.log(productCount)
+        if (productCount > 0) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).send('Cannot delete the category as it is associated with existing products. Count: ' + productCount);
+        }
 
-//     res.send(movie);
-// });
+        // Find and delete the category by ID
+        const category = await Category.findByIdAndDelete(req.params.id).session(session);
+        if (!category) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(404).send('The category with the given ID was not found.');
+        }
 
-// router.get('/:id', async (req, res) => {
-//     const movie = await Movie.findById(req.params.id);
-
-//     if (!movie) return res.status(404).send('The movie with the given ID was not found.');
-
-//     res.send(movie);
-// });
+        await session.commitTransaction();
+        session.endSession();
+        res.send(category);
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error('Error deleting category:', error.message);
+        res.status(500).send('Internal Server Error: ' + error.message);
+    }
+});
 
 module.exports = router; 
