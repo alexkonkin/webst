@@ -1,32 +1,53 @@
+const auth = require('../middleware/auth');
+const admin = require('../middleware/admin');
+const logger = require('../startup/logging');
 const { Product, validate } = require('../models/product');
+const { Review } = require('../models/review');
+const { Order } = require('../models/order');
+const mongoose = require('mongoose');
 const express = require('express');
 const router = express.Router();
 
 // GET route to retrieve all products, sorted by name
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
     try {
-        // Fetch all products from the database and sort them by name
+        logger.info('Retrieving all products');
         const products = await Product.find().sort('name');
-
-        // Send the retrieved products as the response
+        logger.info('Products retrieved successfully', { count: products.length });
         res.send(products);
     } catch (error) {
-        // Handle any errors that occur during the database query
-        res.status(500).send('Internal Server Error: ' + error.message);
+        next(error); // Pass the error to the error handling middleware
+    }
+});
+
+// GET route to retrieve a Product by ID
+router.get('/:id', async (req, res, next) => {
+    try {
+        logger.info('Retrieving product by ID', { id: req.params.id });
+        const product = await Product.findById(req.params.id);
+        if (!product) {
+            logger.info('Product not found', { id: req.params.id });
+            return res.status(404).send('The Product with the given ID was not found.');
+        }
+        logger.info('Product retrieved successfully', { id: req.params.id });
+        res.send(product);
+    } catch (err) {
+        next(err); // Pass the error to the error handling middleware
     }
 });
 
 // POST route to create a new Product
-router.post('/', async (req, res) => {
+router.post('/', [auth, admin], async (req, res, next) => {
     try {
-        // Validate the request body
         const { error } = validate(req.body);
-        if (error) return res.status(400).send(error.details[0].message);
+        if (error) {
+            logger.info('Validation failed for new product', { error: error.details[0].message });
+            return res.status(400).send(error.details[0].message);
+        }
 
-        // Destructure the request body
         const { name, description, price, pictures, category_id, stock_quantity } = req.body;
+        logger.info('Creating new product', { name, description, price, category_id, stock_quantity });
 
-        // Create a new Product
         let product = new Product({
             name,
             description,
@@ -36,57 +57,57 @@ router.post('/', async (req, res) => {
             stock_quantity
         });
 
-        // Save the Product to the database
         product = await product.save();
-
-        // Send the created Product as the response
+        logger.info('Product created successfully', { id: product._id });
         res.send(product);
     } catch (error) {
-        // Handle any errors that occur during the process
-        console.error('Error creating Product:', error.message);
-        res.status(500).send('Internal Server Error: ' + error.message);
+        next(error); // Pass the error to the error handling middleware
     }
 });
 
 // PUT route to update a Product by ID
-router.put('/:id', async (req, res) => {
+router.put('/:id', [auth, admin], async (req, res, next) => {
     try {
-        // Validate the request body
         const { error } = validate(req.body);
-        if (error) return res.status(400).send(error.details[0].message);
+        if (error) {
+            logger.info('Validation failed for updating product', { error: error.details[0].message });
+            return res.status(400).send(error.details[0].message);
+        }
 
-        // Destructure the request body
         const { name, description, price, pictures, category_id, stock_quantity } = req.body;
+        logger.info('Updating product', { id: req.params.id, name, description, price, category_id, stock_quantity });
 
-        // Find and update the Product by ID
         const product = await Product.findByIdAndUpdate(
             req.params.id,
             { name, description, price, pictures, category_id, stock_quantity },
             { new: true }
         );
 
-        // If the Product is not found, return a 404 error
-        if (!product) return res.status(404).send('The Product with the given ID was not found.');
+        if (!product) {
+            logger.info('Product not found for updating', { id: req.params.id });
+            return res.status(404).send('The Product with the given ID was not found.');
+        }
 
-        // Send the updated Product as the response
+        logger.info('Product updated successfully', { id: product._id });
         res.send(product);
     } catch (err) {
-        // Handle any errors that occur during the process
-        console.error('Error updating Product:', err.message);
-        res.status(500).send('Internal Server Error: ' + err.message);
+        next(err); // Pass the error to the error handling middleware
     }
 });
 
 // DELETE route to remove a Product by ID
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', [auth, admin], async (req, res, next) => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
     try {
+        logger.info('Deleting product', { id: req.params.id });
+
         const reviewCount = await Review.countDocuments({ product_id: req.params.id }).session(session);
         const orderCount = await Order.countDocuments({ product_id: req.params.id }).session(session);
 
         if (reviewCount > 0 /*|| orderCount > 0*/) {
+            logger.info('Cannot delete product associated with existing reviews or orders', { id: req.params.id, reviewCount, orderCount });
             await session.abortTransaction();
             session.endSession();
             return res.status(400).send('Cannot delete the product as it is associated with existing reviews or orders.');
@@ -94,6 +115,7 @@ router.delete('/:id', async (req, res) => {
 
         const product = await Product.findByIdAndDelete(req.params.id).session(session);
         if (!product) {
+            logger.info('Product not found for deletion', { id: req.params.id });
             await session.abortTransaction();
             session.endSession();
             return res.status(404).send('The product with the given ID was not found.');
@@ -101,29 +123,12 @@ router.delete('/:id', async (req, res) => {
 
         await session.commitTransaction();
         session.endSession();
+        logger.info('Product deleted successfully', { id: product._id });
         res.send(product);
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
-        console.error('Error deleting product:', error);
-        res.status(500).send('Internal Server Error: ' + error);
-    }
-});
-
-// GET route to retrieve a Product by ID
-router.get('/:id', async (req, res) => {
-    try {
-        const product = await Product.findById(req.params.id);
-
-        // If the Product is not found, return a 404 error
-        if (!product) return res.status(404).send('The Product with the given ID was not found.');
-
-        // Send the retrieved Product as the response
-        res.send(product);
-    } catch (err) {
-        // Handle any errors that occur during the process
-        console.error('Error retrieving Product:', err.message);
-        res.status(500).send('Internal Server Error: ' + err.message);
+        next(error); // Pass the error to the error handling middleware
     }
 });
 
