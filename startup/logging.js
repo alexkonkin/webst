@@ -13,7 +13,8 @@ const logger = winston.createLogger({
         new winston.transports.Console({ format: winston.format.simple() })
     ],
     exceptionHandlers: [
-        new winston.transports.File({ filename: 'uncaughtExceptions.log' })
+        new winston.transports.File({ filename: 'uncaughtExceptions.log' }),
+        new winston.transports.Console({ format: winston.format.simple() })
     ]
 });
 

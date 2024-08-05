@@ -1,0 +1,12 @@
+{
+    "mongo": {
+        "login": "root",
+        "password": "root",
+        "db": "webst_test"
+    },
+    "jwtPrivateKey": "jwt_secret",
+    "mail": {
+        "user": "mbox0077@gmail.com",
+        "password": "mscy fxrx xwud kybq"
+    }
+}

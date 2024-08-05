@@ -65,7 +65,7 @@ router.post('/', [auth, admin], async (req, res, next) => {
         logger.info('Saving new user to database', { username: req.body.username, email: req.body.email });
         await user.save();
         logger.info('User created successfully', { id: user._id });
-        res.send(user + ',' + req.body.password);
+        res.send(user);
     } catch (error) {
         next(error); // Pass the error to the error handling middleware
     }
@@ -100,7 +100,7 @@ router.put('/:id', [auth, admin], async (req, res, next) => {
         }
 
         logger.info('User updated successfully', { id: user._id });
-        res.send(user + ',' + req.body.password);
+        res.send(user);
     } catch (err) {
         next(err); // Pass the error to the error handling middleware
     }

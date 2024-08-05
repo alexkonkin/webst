@@ -2,3 +2,4 @@ node_modules
 README.md
 backup
 logfile.log
+uncaughtExceptions.log

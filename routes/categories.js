@@ -105,7 +105,7 @@ router.delete('/:id', [auth, admin], async (req, res, next) => {
     } catch (err) {
         await session.abortTransaction();
         session.endSession();
-        next(err); // Pass the error to the error handling middleware
+        next(err);  // Pass the error to the error handling middleware
     }
 });
 
