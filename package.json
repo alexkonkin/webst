@@ -4,7 +4,7 @@
   "description": "demo project",
   "main": "index.js",
   "scripts": {
-    "test": "dotenv -e .env.test -- jest --env=jest-environment-node --runInBand",
+    "test": "dotenv -e .env.test -- jest --env=jest-environment-node --runInBand --detectOpenHandles",
     "start": "node index.js",
     "dev": "dotenv -e ./mongodb/.env -- node index.js"
   },

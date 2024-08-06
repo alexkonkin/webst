@@ -86,31 +86,50 @@ router.post('/', [auth, admin], async (req, res, next) => {
 
 // PUT route to update a Product by ID
 router.put('/:id', [auth, admin], async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
         const { error } = validate(req.body);
         if (error) {
             logger.info('Validation failed for updating product', { error: error.details[0].message });
+            await session.abortTransaction();
+            session.endSession();
             return res.status(400).send(error.details[0].message);
         }
 
         const { name, description, price, pictures, category_id, stock_quantity } = req.body;
+
+        const category = await Category.findById(category_id).session(session);
+        if (!category) {
+            logger.error('Invalid category ID in product definition ', { category_id });
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(404).send('Invalid Category Id ' + category_id);
+        }
 
         logger.info('Updating product', { id: req.params.id, name, description, price, category_id, stock_quantity });
 
         const product = await Product.findByIdAndUpdate(
             req.params.id,
             { name, description, price, pictures, category_id, stock_quantity },
-            { new: true }
+            { new: true, session }
         );
 
         if (!product) {
             logger.info('Product not found for updating', { id: req.params.id });
+            await session.abortTransaction();
+            session.endSession();
             return res.status(404).send('The Product with the given ID was not found.');
         }
 
+        await session.commitTransaction();
+        session.endSession();
         logger.info('Product updated successfully', { id: product._id });
         res.send(product);
     } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
         next(err); // Pass the error to the error handling middleware
     }
 });

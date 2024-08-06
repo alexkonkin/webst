@@ -83,10 +83,26 @@ describe('/api/products', () => {
             expect(res.body).toHaveProperty('_id');
             expect(res.body).toHaveProperty('name', 'product1');
         });
+
+
+        it('should return 400 if category does not exist', async () => {
+            const categoryId = new mongoose.Types.ObjectId();
+
+            const productData = { name: 'product1', description: 'some product description', pictures: ['http://localhost/picture1.jpg'], price: 10, category_id: categoryId, stock_quantity: 100 };
+
+            const res = await request(server)
+                .post('/api/products')
+                .send(productData);
+
+            expect(res.status).toBe(400);
+            expect(res.text).toContain('Invalid Category Id');
+        });
     });
 
     describe('PUT /:id', () => {
         it('should return 400 if product is invalid', async () => {
+
+
             const product = new Product({ name: 'product1', description: 'description1', price: 10, category_id: new mongoose.Types.ObjectId(), stock_quantity: 100 });
             await product.save();
 
@@ -102,12 +118,14 @@ describe('/api/products', () => {
             const res = await request(server)
                 .put('/api/products/' + id)
                 .send({ name: 'product1', description: 'description1', price: 10, category_id: new mongoose.Types.ObjectId(), stock_quantity: 100 });
-
             expect(res.status).toBe(404);
         });
 
         it('should update the product if it is valid', async () => {
-            const product = new Product({ name: 'product1', description: 'description1', price: 10, category_id: new mongoose.Types.ObjectId(), stock_quantity: 100 });
+            const category = new Category({ name: 'category1', description: 'description1' });
+            await category.save();
+
+            const product = new Product({ name: 'product1', description: 'description1', price: 10, category_id: category._id, stock_quantity: 100 });
             await product.save();
 
             const res = await request(server)
