@@ -23,14 +23,17 @@ const userSchema = new mongoose.Schema({
         minlength: 5,
         maxlength: 1024
     },
-    isAdmin: Boolean,
-    created_at: {
-        type: Date,
-        default: Date.now
+    isAdmin: {
+        type: Boolean,
+        default: false
     },
-    updated_at: {
-        type: Date,
-        default: Date.now
+    isVerified: {
+        type: Boolean,
+        default: false
+    },
+    verificationToken: {
+        type: String,
+        required: false
     }
 });
 
@@ -39,17 +42,32 @@ userSchema.methods.generateAuthToken = function () {
     return token;
 }
 
+// const User = mongoose.model('User', userSchema);
+
+// function validateUser(user) {
+//     const schema = {
+//         name: Joi.string().min(5).max(50).required(),
+//         email: Joi.string().min(5).max(255).required().email(),
+//         password: Joi.string().min(5).max(255).required()
+//     };
+
+//     return Joi.validate(user, schema);
+// }
+
+
 const User = mongoose.model('User', userSchema);
 
-function validateUser(user) {
-    const schema = {
-        name: Joi.string().min(5).max(50).required(),
+// Define the Joi schema for review validation
+const validateUser = (user) => {
+    const schema = Joi.object({
+        username: Joi.string().min(5).max(50).required(),
         email: Joi.string().min(5).max(255).required().email(),
-        password: Joi.string().min(5).max(255).required()
-    };
+        password: Joi.string().min(5).max(255).required(),
+        isAdmin: Joi.boolean().optional()
+    });
 
-    return Joi.validate(user, schema);
-}
+    return schema.validate(user);
+};
 
 exports.User = User;
 exports.validate = validateUser;

@@ -3,5 +3,10 @@
         "login": "webst_mongo_login",
         "password": "webst_mongo_password",
         "db": "webst_mongo_db"
+    },
+    "jwtPrivateKey": "webst_jwtPrivateKey",
+    "mail": {
+        "user": "webst_mail_user",
+        "password": "webst_mail_password"
     }
 }

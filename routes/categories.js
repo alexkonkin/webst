@@ -1,92 +1,112 @@
+const auth = require('../middleware/auth');
+const admin = require('../middleware/admin');
+const logger = require('../startup/logging');
 const { Category, validate } = require('../models/category');
 const mongoose = require('mongoose');
 const express = require('express');
+const { Product } = require('../models/product');
 const router = express.Router();
 
 // GET route to retrieve all categories, sorted by name
-router.get('/', async (req, res) => {
+router.get('/', async (req, res, next) => {
     try {
-        // Fetch all categories from the database and sort them by name
+        logger.info('Obtaining the full list of categories');
         const categories = await Category.find().sort('name');
-
-        // Send the retrieved categories as the response
+        logger.info('Categories retrieved successfully', { count: categories.length });
         res.send(categories);
-    } catch (error) {
-        // Handle any errors that occur during the database query
-        res.status(500).send('Internal Server Error: ' + error);
+    } catch (err) {
+        next(err); // Pass the error to the error handling middleware
     }
 });
 
 // POST route to create a new category
-router.post('/', async (req, res) => {
+router.post('/', [auth, admin], async (req, res, next) => {
     try {
-        // Validate the request body
         const { error } = validate(req.body);
-        if (error) return res.status(400).send(error.details[0].message);
+        if (error) {
+            logger.info('Validation failed for new category', { error: error.details[0].message });
+            return res.status(400).send(error.details[0].message);
+        }
 
-        // Destructure the request body
         const { name, description } = req.body;
+        logger.info('Creating new category', { name, description });
 
-        // Create a new category
         let category = new Category({
             name,
             description
         });
 
-        // Save the category to the database
         category = await category.save();
-
-        // Send the created category as the response
+        logger.info('Category created successfully', { id: category._id });
         res.send(category);
-    } catch (error) {
-        // Handle any errors that occur during the process
-        console.error('Error creating category:', error);
-        res.status(500).send('Internal Server Error: ' + error);
+    } catch (err) {
+        next(err); // Pass the error to the error handling middleware
     }
 });
 
-router.put('/:id', async (req, res) => {
+// PUT route to update a category by ID
+router.put('/:id', [auth, admin], async (req, res, next) => {
     try {
-        // Validate the request body
         const { error } = validate(req.body);
-        if (error) return res.status(400).send(error.details[0].message);
+        if (error) {
+            logger.info('Validation failed for updating category', { error: error.details[0].message });
+            return res.status(400).send(error.details[0].message);
+        }
 
-        // Destructure the request body
         const { name, description } = req.body;
+        logger.info('Updating category', { id: req.params.id, name, description });
 
-        // Find and update the category by ID
         const category = await Category.findByIdAndUpdate(
             req.params.id,
             { name, description },
             { new: true }
         );
 
-        // If the category is not found, return a 404 error
-        if (!category) return res.status(404).send('The category with the given ID was not found.');
+        if (!category) {
+            logger.info('Category not found', { id: req.params.id });
+            return res.status(404).send('The category with the given ID was not found.');
+        }
 
-        // Send the updated category as the response
+        logger.info('Category updated successfully', { id: category._id });
         res.send(category);
     } catch (err) {
-        // Handle any errors that occur during the process
-        console.error('Error updating category:', err);
-        res.status(500).send('Internal Server Error: ' + err);
+        next(err); // Pass the error to the error handling middleware
     }
 });
 
-// router.delete('/:id', async (req, res) => {
-//     const movie = await Movie.findByIdAndRemove(req.params.id);
+// DELETE route to delete a category by ID
+router.delete('/:id', [auth, admin], async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-//     if (!movie) return res.status(404).send('The movie with the given ID was not found.');
+    try {
+        logger.info('Deleting category', { id: req.params.id });
 
-//     res.send(movie);
-// });
+        const productCount = await Product.countDocuments({ category_id: req.params.id }).session(session);
+        if (productCount > 0) {
+            logger.info('Cannot delete category associated with existing products', { id: req.params.id, productCount });
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).send('Cannot delete the category as it is associated with existing products. Count: ' + productCount);
+        }
 
-// router.get('/:id', async (req, res) => {
-//     const movie = await Movie.findById(req.params.id);
+        const category = await Category.findByIdAndDelete(req.params.id).session(session);
+        if (!category) {
+            logger.info('Category not found for deletion', { id: req.params.id });
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(404).send('The category with the given ID was not found.');
+        }
 
-//     if (!movie) return res.status(404).send('The movie with the given ID was not found.');
+        await session.commitTransaction();
+        session.endSession();
+        logger.info('Category deleted successfully', { id: category._id });
+        res.send(category);
+    } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+        next(err);  // Pass the error to the error handling middleware
+    }
+});
 
-//     res.send(movie);
-// });
-
-module.exports = router; 
+module.exports = router;

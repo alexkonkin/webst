@@ -3,5 +3,10 @@
         "login": "",
         "password": "",
         "db": ""
+    },
+    "jwtPrivateKey": "",
+    "mail": {
+        "user": "",
+        "password": ""
     }
 }
