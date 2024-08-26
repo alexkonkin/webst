@@ -25,14 +25,14 @@ describe('/api/register', () => {
     });
 
     afterEach(async () => {
-        await server.close();
         await User.deleteMany({});
+        await server.close();
     });
 
     describe('POST /register', () => {
         it('should return 400 if user input is invalid', async () => {
             const res = await request(server)
-                .post('/api/register')
+                .post('/api/register/register')
                 .send({ email: 'invalid-email' });
 
             expect(res.status).toBe(400);
@@ -43,7 +43,7 @@ describe('/api/register', () => {
             await user.save();
 
             const res = await request(server)
-                .post('/api/register')
+                .post('/api/register/register')
                 .send({ username: 'user1', email: 'user1@example.com', password: 'password1' });
 
             expect(res.status).toBe(400);
@@ -56,7 +56,7 @@ describe('/api/register', () => {
             jwt.sign.mockReturnValue('verificationToken');
 
             const res = await request(server)
-                .post('/api/register')
+                .post('/api/register/register')
                 .send({ username: 'user1', email: 'user1@example.com', password: 'password1' });
 
             const user = await User.findOne({ email: 'user1@example.com' });
@@ -75,7 +75,7 @@ describe('/api/register', () => {
             });
 
             const res = await request(server)
-                .post('/api/register')
+                .post('/api/register/register')
                 .send({ username: 'user1', email: 'user1@example.com', password: 'password1' });
 
             expect(res.status).toBe(500);
