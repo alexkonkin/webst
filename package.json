@@ -29,5 +29,8 @@
   "devDependencies": {
     "dotenv-cli": "^7.4.2",
     "jest": "^29.7.0"
+  },
+  "engines": {
+    "node": "^20.x.x"
   }
 }
